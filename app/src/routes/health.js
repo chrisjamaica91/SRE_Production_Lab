@@ -10,6 +10,8 @@ router.get("/health", (req, res) => {
   res.status(200).json({
     status: "ok",
     service: "sre-lab-api",
+    version: "2.0.0",
+    cicd: "automated",
     timestamp: new Date().toISOString(),
   });
 });
