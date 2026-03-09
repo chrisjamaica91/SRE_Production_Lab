@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
       - name: api
-        image: chrisjamaica104/sre-lab-api:1afed6a
+        image: chrisjamaica104/sre-lab-api:d8c8e8d
         imagePullPolicy: Always
         ports:
         - containerPort: 3000
