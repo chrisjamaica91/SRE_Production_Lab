@@ -19,6 +19,8 @@ jobs:
       # Step 1: Download your code from GitHub
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GH_PAT }}
         
       # Step 2: Set up Docker Buildx (advanced Docker builder)
       - name: Set up Docker Buildx
