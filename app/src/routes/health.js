@@ -12,6 +12,7 @@ router.get("/health", (req, res) => {
     service: "sre-lab-api",
     version: "2.0.0",
     cicd: "automated",
+    gitops: "argocd-enabled",
     timestamp: new Date().toISOString(),
   });
 });

@@ -57,3 +57,19 @@ jobs:
         run: |
           echo "✅ Docker image built and pushed!"
           echo "Image: ${{ secrets.DOCKER_USERNAME }}/sre-lab-api:${{ steps.version.outputs.VERSION }}"
+
+      # Step 7: Update Kubernetes manifest with new image tag
+      - name: Update Kubernetes manifest
+        run: |
+          VERSION=$(echo $GITHUB_SHA | cut -c1-7)
+          sed -i "s|image: .*/sre-lab-api:.*|image: ${{ secrets.DOCKER_USERNAME }}/sre-lab-api:$VERSION|g" k8s/base/03-deployment.yaml
+          cat k8s/base/03-deployment.yaml
+          
+      # Step 8: Commit and push updated manifest
+      - name: Commit updated manifest
+        run: |
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "actions@github.com"
+          git add k8s/base/03-deployment.yaml
+          git diff --staged --quiet || git commit -m "Update image to ${{ secrets.DOCKER_USERNAME }}/sre-lab-api:$(echo $GITHUB_SHA | cut -c1-7)"
+          git push
