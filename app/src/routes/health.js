@@ -13,6 +13,7 @@ router.get("/health", (req, res) => {
     version: "2.0.0",
     cicd: "automated",
     gitops: "argocd-enabled",
+    test: "code-change",
     timestamp: new Date().toISOString(),
   });
 });
