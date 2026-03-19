@@ -11,9 +11,22 @@ on:
 
 # WHAT should happen?
 jobs:
+  # ============================================================================
+  # JOB 1: SECURITY GATE - All scans must pass before building
+  # ============================================================================
+  security-gate:
+    name: Security Checks
+    uses: ./.github/workflows/security-scanning.yml
+    # This calls your security-scanning.yml workflow
+    # It will run the appropriate scans based on branch
+    
+  # ============================================================================
+  # JOB 2: BUILD - Only runs if security passes
+  # ============================================================================
   build-and-push:
     name: Build Docker Image
     runs-on: ubuntu-latest  # Use Ubuntu server to run this
+    needs: security-gate  # Only run if security-gate job passes
     
     steps:
       # Step 1: Download your code from GitHub

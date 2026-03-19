@@ -9,6 +9,9 @@ on:
   # Run daily at 2 AM UTC to catch new CVEs
   schedule:
     - cron: '0 2 * * *'
+  workflow_call:
+    # Allow this workflow to be called by other workflows (like ci-cd.yml)
+    # No inputs needed for now, but you could add parameters if you want
 
 # Required for uploading security scan results
 permissions:
@@ -19,11 +22,56 @@ permissions:
 
 jobs:
   # ============================================================================
+  # BRANCH DETECTION: Determine which scans to run
+  # ============================================================================
+  detect-environment:
+    name: Detect Branch & Set Scan Level
+    runs-on: ubuntu-latest
+    outputs:
+      run-fast: ${{ steps.check.outputs.run-fast }}
+      run-comprehensive: ${{ steps.check.outputs.run-comprehensive }}
+      run-full: ${{ steps.check.outputs.run-full }}
+      environment: ${{ steps.check.outputs.environment }}
+    steps:
+      - name: Determine scan level
+        id: check
+        run: |
+          echo "Branch: ${{ github.ref }}"
+          
+          if [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
+            echo "🚀 DEVELOP branch: Running FAST scans only (2-3 min)"
+            echo "run-fast=true" >> $GITHUB_OUTPUT
+            echo "run-comprehensive=false" >> $GITHUB_OUTPUT
+            echo "run-full=false" >> $GITHUB_OUTPUT
+            echo "environment=development" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/staging" ]]; then
+            echo "🔍 STAGING branch: Running COMPREHENSIVE scans (8-10 min)"
+            echo "run-fast=true" >> $GITHUB_OUTPUT
+            echo "run-comprehensive=true" >> $GITHUB_OUTPUT
+            echo "run-full=false" >> $GITHUB_OUTPUT
+            echo "environment=staging" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "🛡️ MAIN branch: Running FULL scans (15-20 min)"
+            echo "run-fast=true" >> $GITHUB_OUTPUT
+            echo "run-comprehensive=true" >> $GITHUB_OUTPUT
+            echo "run-full=true" >> $GITHUB_OUTPUT
+            echo "environment=production" >> $GITHUB_OUTPUT
+          else
+            echo "📝 Feature branch: Running FAST scans only"
+            echo "run-fast=true" >> $GITHUB_OUTPUT
+            echo "run-comprehensive=false" >> $GITHUB_OUTPUT
+            echo "run-full=false" >> $GITHUB_OUTPUT
+            echo "environment=feature" >> $GITHUB_OUTPUT
+          fi
+    
+  # ============================================================================
   # Job 1: Secret Scanning
   # ============================================================================
   secret-scanning:
     name: Secret Scanning (gitleaks)
     runs-on: ubuntu-latest
+    needs: detect-environment
+    if: needs.detect-environment.outputs.run-fast == 'true'
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -41,6 +89,8 @@ jobs:
   sast-scanning:
     name: SAST Scanning (Semgrep)
     runs-on: ubuntu-latest
+    needs: detect-environment
+    if: needs.detect-environment.outputs.run-fast == 'true'
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -82,6 +132,8 @@ jobs:
   dependency-scanning:
     name: Dependency Scanning (npm audit + Snyk)
     runs-on: ubuntu-latest
+    needs: detect-environment
+    if: needs.detect-environment.outputs.run-fast == 'true'
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -136,6 +188,8 @@ jobs:
   container-scanning:
     name: Container Scanning (Trivy)
     runs-on: ubuntu-latest
+    needs: detect-environment
+    if: needs.detect-environment.outputs.run-comprehensive == 'true'
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -180,3 +234,107 @@ jobs:
         with:
           name: trivy-scan-report
           path: trivy-report.txt
+  # ============================================================================
+  # Job 5: IaC Scanning (Terraform)
+  # ============================================================================
+  iac-scanning:
+    name: IaC Scanning (tfsec + Checkov)
+    runs-on: ubuntu-latest
+    needs: detect-environment
+    if: needs.detect-environment.outputs.run-comprehensive == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      # Fast scan with tfsec
+      - name: Run tfsec
+        uses: aquasecurity/tfsec-action@v1.0.0
+        with:
+          working_directory: ./terraform
+          format: sarif
+          soft_fail: false  # Fail build on issues
+      
+      - name: Upload tfsec SARIF
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: results.sarif
+      
+      # Comprehensive scan with Checkov
+      - name: Run Checkov
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: ./terraform
+          framework: terraform
+          output_format: sarif
+          output_file_path: checkov-results.sarif
+          # Fail on HIGH/CRITICAL
+          soft_fail: false
+      
+      - name: Upload Checkov results
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: checkov-results.sarif
+
+# ============================================================================
+# SUMMARY: Single notification with all results
+# ============================================================================
+security-summary:
+  name: Security Scan Summary
+  runs-on: ubuntu-latest
+  needs: [detect-environment, secret-scanning, sast-scanning, dependency-scanning, container-scanning]
+  if: always()  # Run even if previous jobs fail
+  steps:
+    - name: Check all scan results
+      run: |
+        echo "========================================="
+        echo "Security Scan Summary"
+        echo "Environment: ${{ needs.detect-environment.outputs.environment }}"
+        echo "========================================="
+        
+        FAILED=0
+        
+        # Check each scan result
+        if [[ "${{ needs.secret-scanning.result }}" == "failure" ]]; then
+          echo "❌ Secret Scanning: FAILED"
+          FAILED=1
+        else
+          echo "✅ Secret Scanning: PASSED"
+        fi
+        
+        if [[ "${{ needs.sast-scanning.result }}" == "failure" ]]; then
+          echo "❌ SAST Scanning: FAILED"
+          FAILED=1
+        else
+          echo "✅ SAST Scanning: PASSED"
+        fi
+        
+        if [[ "${{ needs.dependency-scanning.result }}" == "failure" ]]; then
+          echo "❌ Dependency Scanning: FAILED"
+          FAILED=1
+        else
+          echo "✅ Dependency Scanning: PASSED"
+        fi
+        
+        if [[ "${{ needs.container-scanning.result }}" != "skipped" ]]; then
+          if [[ "${{ needs.container-scanning.result }}" == "failure" ]]; then
+            echo "❌ Container Scanning: FAILED"
+            FAILED=1
+          else
+            echo "✅ Container Scanning: PASSED"
+          fi
+        else
+          echo "⏭️ Container Scanning: SKIPPED (not required for this branch)"
+        fi
+        
+        echo "========================================="
+        
+        if [[ $FAILED -eq 1 ]]; then
+          echo "🚨 One or more security scans failed!"
+          echo "Check the Security tab: https://github.com/${{ github.repository }}/security"
+          exit 1
+        else
+          echo "🎉 All security scans passed!"
+          exit 0
+        fi
