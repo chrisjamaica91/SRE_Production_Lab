@@ -1,0 +1,19 @@
+# Link the ServiceAccount to the Role
+# This grants the permissions defined in the Role
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ .Values.app.name }}-rolebinding
+  namespace: {{ .Values.namespace | default "default" }}
+  labels:
+    app: {{ .Values.app.name }}
+subjects:
+# Who gets the permissions (the service account)
+- kind: ServiceAccount
+  name: {{ .Values.app.name }}-sa
+  namespace: {{ .Values.namespace | default "default" }}
+roleRef:
+# What permissions they get (the role)
+  kind: Role
+  name: {{ .Values.app.name }}-role
+  apiGroup: rbac.authorization.k8s.io

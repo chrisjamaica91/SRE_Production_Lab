@@ -1,0 +1,12 @@
+# Staging environment - production-like but separate
+namespace: staging
+
+config:
+  nodeEnv: staging
+  logLevel: info
+  dbHost: postgres-service.staging.svc.cluster.local
+
+
+# Include PostgreSQL or point to external
+postgresql:
+  enabled: true  # Or false if using external RDS

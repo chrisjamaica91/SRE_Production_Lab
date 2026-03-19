@@ -1,0 +1,16 @@
+# npm's own dependencies - waiting for Node.js upstream fix
+# These don't affect our application code
+CVE-2026-26996  # minimatch DoS - app doesn't use glob patterns from user input
+CVE-2026-27903  # minimatch DoS - app doesn't use glob patterns from user input  
+CVE-2026-27904  # minimatch DoS - app doesn't use glob patterns from user input
+CVE-2026-23745  # tar file overwrite - app doesn't process tar archives
+CVE-2026-23950  # tar file overwrite - app doesn't process tar archives
+CVE-2026-24842  # tar path traversal - app doesn't process tar archives
+CVE-2026-26960  # tar hardlink - app doesn't process tar archives
+CVE-2026-29786  # tar hardlink - app doesn't process tar archives
+CVE-2026-31802  # tar symlink - app doesn't process tar archives
+CVE-2025-64756  # glob command injection - app doesn't execute glob from user input
+CVE-2024-21538  # cross-spawn ReDoS - app doesn't use this package
+
+# Action: Re-scan after Node.js 20.x.x update
+# Reviewed: 2026-03-14

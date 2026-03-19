@@ -1,0 +1,41 @@
+# Test environment specific values
+# Deploy with: helm install sre-lab-test ./sre-lab-api -f values-test.yaml
+
+# Override namespace
+namespace: test
+
+# Use local images for testing
+image:
+  pullPolicy: Never
+
+# Lower resources for test
+blue:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+green:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+# Test-specific config
+config:
+  nodeEnv: test
+  logLevel: debug
+  dbName: testdb
+  dbHost: postgres-service.test.svc.cluster.local
+
+# Enable PostgreSQL for local testing
+postgresql:
+  enabled: true

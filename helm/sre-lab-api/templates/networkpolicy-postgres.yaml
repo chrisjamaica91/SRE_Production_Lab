@@ -1,0 +1,52 @@
+# Allow ONLY app pods to connect to PostgreSQL
+# Blocks all other pods (including attacker pods)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: postgres-allow-app
+  namespace: {{ .Values.namespace | default "default" }}
+  labels:
+    app: {{ .Values.app.name }}
+spec:
+  # This policy applies to PostgreSQL pods
+  podSelector:
+    matchLabels:
+      app: postgres
+  policyTypes:
+  - Ingress
+  ingress:
+  # Allow connections FROM app pods
+  - from:
+    - podSelector:
+        matchLabels:
+          app: {{ .Values.app.name }}
+    ports:
+    - protocol: TCP
+      port: 5432
+      
+---
+
+# Allow app pods to connect TO PostgreSQL (egress from app)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: app-allow-postgres-egress
+  namespace: {{ .Values.namespace | default "default" }}
+  labels:
+    app: {{ .Values.app.name }}
+spec:
+  # This policy applies to app pods
+  podSelector:
+    matchLabels:
+      app: {{ .Values.app.name }}
+  policyTypes:
+  - Egress
+  egress:
+  # Allow connections TO postgres pods
+  - to:
+    - podSelector:
+        matchLabels:
+          app: postgres
+    ports:
+    - protocol: TCP
+      port: 5432

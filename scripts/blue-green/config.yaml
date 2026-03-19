@@ -1,0 +1,55 @@
+# Blue/Green Deployment Configuration
+# This file configures the deployment orchestration script
+
+# Target namespace
+namespace: test
+
+# Service to update
+service_name: sre-lab-api
+
+# Deployment names
+blue_deployment: sre-lab-api-blue
+green_deployment: sre-lab-api-green
+
+# Current and target versions
+current_version: blue  # Version currently receiving traffic
+target_version: green  # Version to switch traffic to
+
+# Health check settings
+health_check:
+  endpoint: /health
+  port: 3000
+  timeout: 10
+  retries: 3
+
+# Readiness check settings  
+readiness_check:
+  endpoint: /ready
+  port: 3000
+  timeout: 10
+  retries: 3
+
+# Smoke test endpoints (run after traffic switch)
+smoke_tests:
+  - path: /health
+    expected_status: 200
+    timeout: 10
+  - path: /ready
+    expected_status: 200
+    timeout: 10
+
+# Rollback settings
+rollback:
+  enabled: true
+  automatic: true  # Automatically rollback on failure
+
+# Validation timeouts (seconds)
+timeouts:
+  endpoint_update_wait: 10     # Wait after traffic switch for endpoints to update
+  pod_ready_timeout: 300      # Max wait for pods to be ready
+  smoke_test_delay: 2         # Wait before running smoke tests
+
+# Logging
+logging:
+  verbose: true
+  timestamps: true

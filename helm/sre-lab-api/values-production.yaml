@@ -1,0 +1,20 @@
+# Production environment
+namespace: production
+
+# Full replicas for production
+blue:
+  replicas: 3
+
+green:
+  replicas: 3
+
+config:
+  nodeEnv: production
+  logLevel: warn  # Less verbose in prod
+  dbHost: your-rds-endpoint.us-east-1.rds.amazonaws.com
+  dbName: sredb
+
+
+# No embedded PostgreSQL in production
+postgresql:
+  enabled: false

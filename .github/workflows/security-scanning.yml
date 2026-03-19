@@ -1,0 +1,182 @@
+name: Security Scanning Suite
+
+# When to run
+on:
+  push:
+    branches: [ main, staging, develop ]
+  pull_request:
+    branches: [ main, staging ]
+  # Run daily at 2 AM UTC to catch new CVEs
+  schedule:
+    - cron: '0 2 * * *'
+
+# Required for uploading security scan results
+permissions:
+  contents: read
+  security-events: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  # ============================================================================
+  # Job 1: Secret Scanning
+  # ============================================================================
+  secret-scanning:
+    name: Secret Scanning (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Full history for gitleaks
+      
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ============================================================================
+  # Job 2: SAST - Static Application Security Testing
+  # ============================================================================
+  sast-scanning:
+    name: SAST Scanning (Semgrep)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Run Semgrep
+        uses: returntocorp/semgrep-action@v1
+        with:
+          # Semgrep rulesets to use
+          config: >-
+            p/security-audit
+            p/owasp-top-ten
+            p/nodejs
+            p/javascript
+            p/docker
+          # Generate SARIF report for GitHub Security tab
+          generateSarif: true
+        env:
+          # Semgrep App token (optional - for private rules)
+          # SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+      
+      # Upload results to GitHub Security tab
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()  # Upload even if Semgrep finds issues
+        with:
+          sarif_file: semgrep.sarif
+      
+      # Fail on high-severity findings
+      - name: Check for critical/high severity findings
+        if: failure()
+        run: |
+          echo "❌ SAST scan found security issues!"
+          echo "Check the Security tab for details"
+          exit 1
+
+  # ============================================================================
+  # Job 3: SCA - Software Composition Analysis
+  # ============================================================================
+  dependency-scanning:
+    name: Dependency Scanning (npm audit + Snyk)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: app/package-lock.json
+      
+      # Fast built-in scan
+      - name: Run npm audit
+        working-directory: ./app
+        run: |
+          echo "Running npm audit..."
+          npm audit --audit-level=high --json > npm-audit-results.json || true
+          
+          # Display results
+          cat npm-audit-results.json | jq '.metadata'
+          
+          # Fail on high/critical vulnerabilities
+          VULNERABILITIES=$(cat npm-audit-results.json | jq '.metadata.vulnerabilities.high + .metadata.vulnerabilities.critical')
+          
+          if [ "$VULNERABILITIES" -gt 0 ]; then
+            echo "❌ Found $VULNERABILITIES high/critical vulnerabilities"
+            npm audit --audit-level=high
+            exit 1
+          else
+            echo "✅ No high/critical vulnerabilities found"
+          fi
+      
+      # More comprehensive scan with Snyk
+      - name: Run Snyk to check for vulnerabilities
+        uses: snyk/actions/node@master
+        continue-on-error: true  # Don't fail build, just report
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high --file=app/package.json
+      
+      # Upload results
+      - name: Upload npm audit results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: npm-audit-results
+          path: app/npm-audit-results.json
+  # ============================================================================
+  # Job 4: Container Image Scanning
+  # ============================================================================
+  container-scanning:
+    name: Container Scanning (Trivy)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Build Docker image for scanning
+        run: |
+          docker build -t sre-lab-api:${{ github.sha }} ./app
+      
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'sre-lab-api:${{ github.sha }}'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          # Scan for OS packages, app dependencies, and misconfigurations
+          scanners: 'vuln,secret,config'
+          # Exit code based on severity
+          exit-code: '1'
+          severity: 'CRITICAL,HIGH'
+          # Ignore unfixed vulnerabilities (can't patch yet)
+          ignore-unfixed: true
+      
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+      
+      # Generate human-readable report for artifacts
+      - name: Generate detailed Trivy report
+        uses: aquasecurity/trivy-action@master
+        if: always()
+        with:
+          image-ref: 'sre-lab-api:${{ github.sha }}'
+          format: 'table'
+          output: 'trivy-report.txt'
+          scanners: 'vuln,secret,config'
+      
+      - name: Upload Trivy report
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: trivy-scan-report
+          path: trivy-report.txt

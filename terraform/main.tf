@@ -85,3 +85,29 @@ module "eks" {
   # Explicit dependency on VPC
   depends_on = [module.vpc]
 }
+
+# ============================================================================
+# GitHub OIDC Authentication
+# ============================================================================
+# Enables GitHub Actions to deploy to AWS without storing credentials
+
+module "github_oidc" {
+  source = "./modules/github-oidc"
+
+  # Replace with your GitHub username/org
+  github_org  = "chrisjamaica91"
+  github_repo = "SRE_Lab_Enterprise_Level"
+  
+  # Only main branch can deploy to production
+  # Add "staging" if you have a staging branch
+  github_branches = ["main"]
+  
+  role_name = "GitHubActionsDeployRole"
+
+  tags = {
+    Project     = "SRE-Lab"
+    ManagedBy   = "Terraform"
+    Purpose     = "CI/CD"
+    Environment = "production"
+  }
+}

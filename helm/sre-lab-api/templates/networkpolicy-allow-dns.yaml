@@ -1,0 +1,27 @@
+# Allow all pods to perform DNS lookups
+# Without this, pods can't resolve service names
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: {{ .Values.namespace | default "default" }}
+  labels:
+    app: {{ .Values.app.name }}
+spec:
+  podSelector: {}  # Applies to ALL pods
+  policyTypes:
+  - Egress
+  egress:
+  # Allow DNS queries to kube-dns/CoreDNS
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+    - podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53

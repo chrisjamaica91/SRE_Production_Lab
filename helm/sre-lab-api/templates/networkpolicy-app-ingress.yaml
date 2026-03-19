@@ -1,0 +1,22 @@
+# Allow external traffic to reach the app pods
+# This would typically be from an Ingress controller or LoadBalancer
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: app-allow-ingress
+  namespace: {{ .Values.namespace | default "default" }}
+  labels:
+    app: {{ .Values.app.name }}
+spec:
+  # This policy applies to app pods (blue and green)
+  podSelector:
+    matchLabels:
+      app: {{ .Values.app.name }}
+  policyTypes:
+  - Ingress
+  ingress:
+  # Allow all ingress traffic to port 3000
+  # In production, you'd restrict this to specific namespaces (ingress-nginx)
+  - ports:
+    - protocol: TCP
+      port: 3000

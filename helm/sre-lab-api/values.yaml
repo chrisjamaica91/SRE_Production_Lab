@@ -1,0 +1,81 @@
+# Default values for sre-lab-api
+# This serves as the base, overridden by environment-specific files
+
+# Application metadata
+app:
+  name: sre-lab-api
+  
+# Image configuration
+image:
+  repository: chrisjamaica104/sre-lab-api
+  tag: e43b7cb
+  pullPolicy: Always
+
+# Blue deployment configuration
+blue:
+  enabled: true
+  replicas: 2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# Green deployment configuration  
+green:
+  enabled: true
+  replicas: 2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 3000
+  activeVersion: blue  # Which deployment receives traffic
+
+# Application configuration
+config:
+  nodeEnv: production
+  logLevel: info
+  dbPort: "5432"
+  dbName: sredb
+  dbHost: postgres-service.production.svc.cluster.local
+
+# Health checks
+healthCheck:
+  liveness:
+    enabled: true
+    path: /health
+    initialDelaySeconds: 10
+    periodSeconds: 30
+    timeoutSeconds: 3
+    failureThreshold: 3
+  readiness:
+    enabled: true
+    path: /ready
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+# PostgreSQL (for test/staging environments only)
+postgresql:
+  enabled: false  # Disabled by default (use RDS in production)
+  image: postgres:15-alpine
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi

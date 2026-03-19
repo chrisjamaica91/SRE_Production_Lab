@@ -1,0 +1,19 @@
+# Define what the app service account can do
+# This example gives read-only access to basic resources
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ .Values.app.name }}-role
+  namespace: {{ .Values.namespace | default "default" }}
+  labels:
+    app: {{ .Values.app.name }}
+rules:
+# Allow app to read its own pod information (for metadata, health checks)
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list"]
+# Allow app to read ConfigMaps (if it needs dynamic config)
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list"]
+# NO access to secrets, deployments, services, etc.

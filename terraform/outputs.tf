@@ -54,6 +54,13 @@ output "kubectl_config_command" {
   value       = module.eks.kubectl_config_command
 }
 
+# Output the role ARN - you'll need this for GitHub Actions
+output "github_actions_role_arn" {
+  description = "ARN to configure in GitHub Actions workflow"
+  value       = module.github_oidc.role_arn
+  sensitive   = false  # Not sensitive - it's just an identifier
+}
+
 # ═══════════════════════════════════════════════════════════
 # Connection Instructions
 # ═══════════════════════════════════════════════════════════

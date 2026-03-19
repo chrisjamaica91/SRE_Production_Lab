@@ -1,0 +1,88 @@
+{{- if .Values.green.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.app.name }}-green
+  namespace: {{ .Values.namespace | default "default" }}
+  labels:
+    app: {{ .Values.app.name }}
+    version: green
+    environment: {{ .Values.config.nodeEnv }}
+spec:
+  replicas: {{ .Values.green.replicas }}
+  selector:
+    matchLabels:
+      app: {{ .Values.app.name }}
+      version: green
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.app.name }}
+        version: green
+    spec:
+      serviceAccountName: {{ .Values.app.name }}-sa
+      securityContext:  # ← Add this pod-level security context
+          runAsNonRoot: true
+          runAsUser: 1001
+          fsGroup: 1001
+          seccompProfile:
+            type: RuntimeDefault
+      containers:
+      - name: api
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.service.targetPort }}
+          name: http
+          protocol: TCP
+        envFrom:
+        - configMapRef:
+            name: {{ .Values.app.name }}-config
+        - secretRef:
+            name: app-db-secret
+        resources:
+          requests:
+            cpu: {{ .Values.green.resources.requests.cpu }}
+            memory: {{ .Values.green.resources.requests.memory }}
+          limits:
+            cpu: {{ .Values.green.resources.limits.cpu }}
+            memory: {{ .Values.green.resources.limits.memory }}
+        {{- if .Values.healthCheck.liveness.enabled }}
+        livenessProbe:
+          httpGet:
+            path: {{ .Values.healthCheck.liveness.path }}
+            port: {{ .Values.service.targetPort }}
+          initialDelaySeconds: {{ .Values.healthCheck.liveness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.healthCheck.liveness.periodSeconds }}
+          timeoutSeconds: {{ .Values.healthCheck.liveness.timeoutSeconds }}
+          failureThreshold: {{ .Values.healthCheck.liveness.failureThreshold }}
+        {{- end }}
+        {{- if .Values.healthCheck.readiness.enabled }}
+        readinessProbe:
+          httpGet:
+            path: {{ .Values.healthCheck.readiness.path }}
+            port: {{ .Values.service.targetPort }}
+          initialDelaySeconds: {{ .Values.healthCheck.readiness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.healthCheck.readiness.periodSeconds }}
+          timeoutSeconds: {{ .Values.healthCheck.readiness.timeoutSeconds }}
+          failureThreshold: {{ .Values.healthCheck.readiness.failureThreshold }}
+        {{- end }}
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: cache
+          mountPath: /root/.npm
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      - name: cache
+        emptyDir: {}
+{{- end }}

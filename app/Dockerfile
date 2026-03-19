@@ -1,7 +1,7 @@
 # ===================================
 # Stage 1: Build Stage
 # ===================================
-FROM node:18-alpine AS builder
+FROM node:20-alpine3.22 AS builder
 
 WORKDIR /usr/src/app
 
@@ -17,7 +17,7 @@ COPY . .
 # ===================================
 # Stage 2: Production Stage
 # ===================================
-FROM node:18-alpine
+FROM node:20-alpine3.22
 
 # Add labels for documentation
 LABEL maintainer="chris@srelab.com"
