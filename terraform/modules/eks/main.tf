@@ -80,11 +80,6 @@ resource "aws_security_group_rule" "cluster_ingress_workstation_https" {
 # THE EKS CLUSTER ITSELF
 # ═══════════════════════════════════════════════════════════
 
-resource "aws_eks_cluster" "main" {
-  name     = "${local.name_prefix}-eks"
-  version  = var.cluster_version
-  role_arn = aws_iam_role.cluster.arn
-
   # Justification: Public endpoint required for GitHub Actions CI/CD from cloud runners
   # Mitigations:
   #   1. IAM authentication via OIDC (no static credentials)
@@ -95,6 +90,11 @@ resource "aws_eks_cluster" "main" {
   # Risk: LOW - Properly authenticated and authorized access only
   # Approved by: Chris | Date: 2026-03-20
   # nosemgrep: terraform.lang.security.eks-public-endpoint-enabled.eks-public-endpoint-enabled
+resource "aws_eks_cluster" "main" {
+  name     = "${local.name_prefix}-eks"
+  version  = var.cluster_version
+  role_arn = aws_iam_role.cluster.arn
+
   vpc_config {
     subnet_ids = concat(var.private_subnet_ids, var.public_subnet_ids)
 
