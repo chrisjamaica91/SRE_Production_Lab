@@ -85,7 +85,6 @@ resource "aws_eks_cluster" "main" {
   version  = var.cluster_version
   role_arn = aws_iam_role.cluster.arn
 
-  # nosemgrep: terraform.lang.security.eks-public-endpoint-enabled.eks-public-endpoint-enabled
   # Justification: Public endpoint required for GitHub Actions CI/CD from cloud runners
   # Mitigations:
   #   1. IAM authentication via OIDC (no static credentials)
@@ -95,6 +94,7 @@ resource "aws_eks_cluster" "main" {
   # Alternative: GitHub Enterprise with self-hosted runners in VPN (higher cost)
   # Risk: LOW - Properly authenticated and authorized access only
   # Approved by: Chris | Date: 2026-03-20
+  # nosemgrep: terraform.lang.security.eks-public-endpoint-enabled.eks-public-endpoint-enabled
   vpc_config {
     subnet_ids = concat(var.private_subnet_ids, var.public_subnet_ids)
 

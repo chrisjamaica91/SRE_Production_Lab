@@ -58,14 +58,14 @@ resource "aws_subnet" "public" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = local.public_subnet_cidrs[count.index]
   availability_zone       = var.availability_zones[count.index]
-  
-  # nosemgrep: terraform.aws.security.aws-subnet-has-public-ip-address.aws-subnet-has-public-ip-address
+
   # Justification: This IS the public subnet tier - public IPs required for ALB and NAT Gateway
   # Architecture: Standard AWS VPC design with public/private subnet separation
   # Mitigation: Application workloads run in private subnets, only infrastructure in public
   # Risk: NONE - By design, this is the intended architecture
   # Reference: https://docs.aws.amazon.com/vpc/latest/userguide/vpc-example-private-subnets-nat.html
   # Approved by: Chris | Date: 2026-03-20
+  # nosemgrep: terraform.aws.security.aws-subnet-has-public-ip-address.aws-subnet-has-public-ip-address
   map_public_ip_on_launch = true # Auto-assign public IPs
 
   tags = {
