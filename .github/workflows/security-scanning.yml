@@ -107,9 +107,6 @@ jobs:
             p/docker
           # Generate SARIF report for GitHub Security tab
           generateSarif: true
-        env:
-          # Semgrep App token (optional - for private rules)
-          # SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
       
       # Upload results to GitHub Security tab
       - name: Upload SARIF file
