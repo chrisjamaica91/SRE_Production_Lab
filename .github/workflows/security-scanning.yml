@@ -182,6 +182,7 @@ jobs:
         with:
           name: npm-audit-results
           path: app/npm-audit-results.json
+
   # ============================================================================
   # Job 4: Container Image Scanning
   # ============================================================================
@@ -234,6 +235,7 @@ jobs:
         with:
           name: trivy-scan-report
           path: trivy-report.txt
+
   # ============================================================================
   # Job 5: IaC Scanning (Terraform)
   # ============================================================================
@@ -277,64 +279,64 @@ jobs:
         with:
           sarif_file: checkov-results.sarif
 
-# ============================================================================
-# SUMMARY: Single notification with all results
-# ============================================================================
-security-summary:
-  name: Security Scan Summary
-  runs-on: ubuntu-latest
-  needs: [detect-environment, secret-scanning, sast-scanning, dependency-scanning, container-scanning]
-  if: always()  # Run even if previous jobs fail
-  steps:
-    - name: Check all scan results
-      run: |
-        echo "========================================="
-        echo "Security Scan Summary"
-        echo "Environment: ${{ needs.detect-environment.outputs.environment }}"
-        echo "========================================="
-        
-        FAILED=0
-        
-        # Check each scan result
-        if [[ "${{ needs.secret-scanning.result }}" == "failure" ]]; then
-          echo "❌ Secret Scanning: FAILED"
-          FAILED=1
-        else
-          echo "✅ Secret Scanning: PASSED"
-        fi
-        
-        if [[ "${{ needs.sast-scanning.result }}" == "failure" ]]; then
-          echo "❌ SAST Scanning: FAILED"
-          FAILED=1
-        else
-          echo "✅ SAST Scanning: PASSED"
-        fi
-        
-        if [[ "${{ needs.dependency-scanning.result }}" == "failure" ]]; then
-          echo "❌ Dependency Scanning: FAILED"
-          FAILED=1
-        else
-          echo "✅ Dependency Scanning: PASSED"
-        fi
-        
-        if [[ "${{ needs.container-scanning.result }}" != "skipped" ]]; then
-          if [[ "${{ needs.container-scanning.result }}" == "failure" ]]; then
-            echo "❌ Container Scanning: FAILED"
+  # ============================================================================
+  # SUMMARY: Single notification with all results
+  # ============================================================================
+  security-summary:
+    name: Security Scan Summary
+    runs-on: ubuntu-latest
+    needs: [detect-environment, secret-scanning, sast-scanning, dependency-scanning, container-scanning]
+    if: always()  # Run even if previous jobs fail
+    steps:
+      - name: Check all scan results
+        run: |
+          echo "========================================="
+          echo "Security Scan Summary"
+          echo "Environment: ${{ needs.detect-environment.outputs.environment }}"
+          echo "========================================="
+          
+          FAILED=0
+          
+          # Check each scan result
+          if [[ "${{ needs.secret-scanning.result }}" == "failure" ]]; then
+            echo "❌ Secret Scanning: FAILED"
             FAILED=1
           else
-            echo "✅ Container Scanning: PASSED"
+            echo "✅ Secret Scanning: PASSED"
           fi
-        else
-          echo "⏭️ Container Scanning: SKIPPED (not required for this branch)"
-        fi
-        
-        echo "========================================="
-        
-        if [[ $FAILED -eq 1 ]]; then
-          echo "🚨 One or more security scans failed!"
-          echo "Check the Security tab: https://github.com/${{ github.repository }}/security"
-          exit 1
-        else
-          echo "🎉 All security scans passed!"
-          exit 0
-        fi
+          
+          if [[ "${{ needs.sast-scanning.result }}" == "failure" ]]; then
+            echo "❌ SAST Scanning: FAILED"
+            FAILED=1
+          else
+            echo "✅ SAST Scanning: PASSED"
+          fi
+          
+          if [[ "${{ needs.dependency-scanning.result }}" == "failure" ]]; then
+            echo "❌ Dependency Scanning: FAILED"
+            FAILED=1
+          else
+            echo "✅ Dependency Scanning: PASSED"
+          fi
+          
+          if [[ "${{ needs.container-scanning.result }}" != "skipped" ]]; then
+            if [[ "${{ needs.container-scanning.result }}" == "failure" ]]; then
+              echo "❌ Container Scanning: FAILED"
+              FAILED=1
+            else
+              echo "✅ Container Scanning: PASSED"
+            fi
+          else
+            echo "⏭️ Container Scanning: SKIPPED (not required for this branch)"
+          fi
+          
+          echo "========================================="
+          
+          if [[ $FAILED -eq 1 ]]; then
+            echo "🚨 One or more security scans failed!"
+            echo "Check the Security tab: https://github.com/${{ github.repository }}/security"
+            exit 1
+          else
+            echo "🎉 All security scans passed!"
+            exit 0
+          fi
