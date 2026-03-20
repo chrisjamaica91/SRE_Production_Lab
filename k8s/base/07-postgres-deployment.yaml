@@ -17,6 +17,10 @@ spec:
     spec:
       containers:
       - name: postgres
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: false  # Postgres needs root
+          readOnlyRootFilesystem: false
         image: postgres:15-alpine
         ports:
         - containerPort: 5432

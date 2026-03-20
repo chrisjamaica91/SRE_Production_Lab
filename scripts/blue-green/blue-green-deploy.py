@@ -602,7 +602,7 @@ def run_smoke_tests(
         expected_status = test.get('expected_status', 200)
         timeout_test = test.get('timeout', 5)
         
-        url = f"http://{cluster_ip}:{service_port}{path}"
+        url = f"https://{cluster_ip}:{service_port}{path}"
         
         print_info(f"Test {i}/{len(smoke_tests)}: GET {path}")
         print_info(f"  URL: {url}")
