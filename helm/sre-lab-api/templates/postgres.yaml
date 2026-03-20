@@ -18,6 +18,15 @@ spec:
       containers:
       - name: postgres
         image: {{ .Values.postgresql.image }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          # nosemgrep: yaml.kubernetes.security.run-as-non-root-unsafe-value.run-as-non-root-unsafe-value
+          # Justification: PostgreSQL official image requires root for data directory initialization
+          # Production mitigation: Use managed AWS RDS instead of containerized PostgreSQL
+          # Risk: MEDIUM - Acceptable for non-production; production uses RDS
+          # Approved by: Chris | Date: 2026-03-20
+          runAsNonRoot: false
+          readOnlyRootFilesystem: false
         env:
         - name: POSTGRES_DB
           valueFrom:
