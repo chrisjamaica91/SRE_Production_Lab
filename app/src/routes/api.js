@@ -10,7 +10,7 @@ const logger = require("../utils/logger");
 // Hello World endpoint
 router.get("/", (req, res) => {
   res.json({
-    message: "Hello World! Welcome to the SRE Lab API",
+    message: "Hello World! Welcome to the SRE Lab API Enterprise Grade Application",
     version: "1.0.0",
     endpoints: {
       health: "/health",
